@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>群聊学习状态</title>
+    <style>
+      :root { color: #1f2937; background: #f5f7fb; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      [data-theme="dark"] { color: #e5e7eb; background: #111827; }
+      body { margin: 0; padding: 24px; background: inherit; }
+      main { max-width: 1000px; margin: auto; }
+      header, .group { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 3px #0000000d; }
+      [data-theme="dark"] header, [data-theme="dark"] .group { background: #1f2937; border-color: #374151; }
+      h1, h2 { margin: 0 0 12px; }
+      .meta { color: #6b7280; margin: 4px 0; }
+      [data-theme="dark"] .meta { color: #9ca3af; }
+      .status { font-weight: 700; color: #b45309; }
+      .status.active { color: #15803d; }
+      .counts { display: flex; gap: 12px; margin: 14px 0; flex-wrap: wrap; }
+      .count { background: #eef2ff; border-radius: 9px; padding: 9px 12px; }
+      [data-theme="dark"] .count { background: #312e81; }
+      ul { padding-left: 20px; margin-bottom: 0; }
+      li { margin: 7px 0; line-height: 1.5; }
+      button { border: 0; border-radius: 8px; padding: 9px 12px; cursor: pointer; font: inherit; }
+      .refresh { background: #2563eb; color: #fff; margin-right: 8px; }
+      .clear { background: #fee2e2; color: #b91c1c; }
+      [data-theme="dark"] .clear { background: #7f1d1d; color: #fee2e2; }
+      .empty, .error { padding: 24px; text-align: center; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>群聊学习状态</h1>
+        <p id="status" class="status">正在读取状态…</p>
+        <p id="topics" class="meta"></p>
+        <button class="refresh" id="refresh">刷新</button>
+      </header>
+      <section id="groups"></section>
+    </main>
+    <script>
+      const groupsElement = document.getElementById("groups");
+      const statusElement = document.getElementById("status");
+      const topicsElement = document.getElementById("topics");
+
+      function makeElement(tag, text, className = "") {
+        const element = document.createElement(tag);
+        element.textContent = text;
+        element.className = className;
+        return element;
+      }
+
+      async function clearGroup(groupId) {
+        if (!window.confirm(`确定清空群 ${groupId} 的候选原话和已学习知识吗？此操作不可恢复。`)) return;
+        await window.AstrBotPluginPage.apiPost("clear-group-learning", { group_id: groupId });
+        await loadStatus();
+      }
+
+      function renderGroups(groups) {
+        groupsElement.replaceChildren();
+        if (!groups.length) {
+          groupsElement.append(makeElement("p", "暂无学习数据。", "empty"));
+          return;
+        }
+        for (const group of groups) {
+          const card = makeElement("article", "", "group");
+          card.append(makeElement("h2", `群 ${group.group_id}`));
+          const counts = makeElement("div", "", "counts");
+          counts.append(makeElement("span", `候选原话：${group.pending_count}`, "count"));
+          counts.append(makeElement("span", `已提炼知识：${group.memory_count}`, "count"));
+          card.append(counts);
+          card.append(makeElement("strong", "最近提炼的知识"));
+          const memories = document.createElement("ul");
+          if (group.recent_memories.length) {
+            for (const memory of group.recent_memories) memories.append(makeElement("li", memory));
+          } else {
+            memories.append(makeElement("li", "暂时没有。"));
+          }
+          card.append(memories);
+          const clearButton = makeElement("button", "清空本群学习数据", "clear");
+          clearButton.addEventListener("click", () => clearGroup(group.group_id));
+          card.append(clearButton);
+          groupsElement.append(card);
+        }
+      }
+
+      async function loadStatus() {
+        try {
+          const data = await window.AstrBotPluginPage.apiGet("learning-status");
+          statusElement.textContent = data.enabled ? "学习功能已启用" : "学习功能当前已关闭";
+          statusElement.className = data.enabled ? "status active" : "status";
+          topicsElement.textContent = `重点主题：${(data.topics || []).join("、") || "未配置"}`;
+          renderGroups(data.groups || []);
+        } catch (error) {
+          groupsElement.replaceChildren(makeElement("p", `读取失败：${error.message}`, "error"));
+        }
+      }
+
+      document.getElementById("refresh").addEventListener("click", loadStatus);
+      window.AstrBotPluginPage.ready().then(loadStatus);
+    </script>
+  </body>
+</html>

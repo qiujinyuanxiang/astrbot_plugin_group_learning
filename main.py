@@ -10,6 +10,7 @@ from pathlib import Path
 from astrbot.api.event import AstrMessageEvent, MessageEventResult, filter
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, StarTools
+from astrbot.api.web import request
 
 
 class GroupLearning(Star):
@@ -31,6 +32,19 @@ class GroupLearning(Star):
         self.file_lock = asyncio.Lock()
         self.schedule_task: asyncio.Task | None = None
         self.last_schedule_marker = ""
+        # Plugin Page 通过这两个接口读取统计信息和清理指定群的数据。
+        self.context.register_web_api(
+            "/astrbot_plugin_group_learning/learning-status",
+            self.get_learning_status_api,
+            ["GET"],
+            "获取群聊学习状态",
+        )
+        self.context.register_web_api(
+            "/astrbot_plugin_group_learning/clear-group-learning",
+            self.clear_group_learning_api,
+            ["POST"],
+            "清空指定群的学习数据",
+        )
 
     async def initialize(self) -> None:
         """插件加载后启动轻量定时检查循环。"""
@@ -407,6 +421,64 @@ class GroupLearning(Star):
                     if message.get("id") not in processed_ids
                 ]
             self._write_data(self.pending_path, latest_data)
+
+    async def get_learning_status_api(self) -> dict:
+        """为后台学习状态页面提供按群统计和最近知识。
+
+        Returns:
+            包含每个群候选数量、知识数量和最近知识的字典。
+        """
+        async with self.file_lock:
+            pending_data = self._read_data(self.pending_path)
+            memory_data = self._read_data(self.memory_path)
+        group_ids = sorted(set(pending_data) | set(memory_data))
+        groups = []
+        for group_id in group_ids:
+            recent_memories = memory_data.get(group_id, [])[-5:]
+            groups.append(
+                {
+                    "group_id": group_id,
+                    "pending_count": len(pending_data.get(group_id, [])),
+                    "memory_count": len(memory_data.get(group_id, [])),
+                    "recent_memories": [
+                        item.get("text", "") for item in reversed(recent_memories)
+                    ],
+                }
+            )
+        return {
+            "enabled": bool(self.config.get("enabled", False)),
+            "topics": self.config.get("listen_topics", []),
+            "groups": groups,
+        }
+
+    async def clear_group_learning_api(self) -> dict:
+        """从后台页面清空指定群的候选原话和已提炼知识。
+
+        Returns:
+            清理操作结果。
+
+        Raises:
+            ValueError: 当请求未提供群号或群号不在学习白名单时抛出。
+        """
+        body = await request.json(default={})
+        group_id = (
+            str(body.get("group_id", "")).strip() if isinstance(body, dict) else ""
+        )
+        allowed_group_ids = {
+            str(item).strip()
+            for item in self.config.get("allowed_group_ids", [])
+            if str(item).strip()
+        }
+        if not group_id:
+            raise ValueError("缺少群号")
+        if group_id not in allowed_group_ids:
+            raise ValueError("只能清空学习白名单中的群")
+        async with self.file_lock:
+            for path in (self.pending_path, self.memory_path):
+                data = self._read_data(path)
+                data.pop(group_id, None)
+                self._write_data(path, data)
+        return {"success": True, "group_id": group_id}
 
     @staticmethod
     def _search_terms(text: str) -> set[str]:
