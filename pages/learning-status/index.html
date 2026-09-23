@@ -16,6 +16,14 @@
       [data-theme="dark"] .meta { color: #9ca3af; }
       .status { font-weight: 700; color: #b45309; }
       .status.active { color: #15803d; }
+      .overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+      .metric { border: 1px solid #dbe3f4; background: #f8faff; border-radius: 10px; padding: 13px; }
+      [data-theme="dark"] .metric { border-color: #374151; background: #111827; }
+      .metric strong { display: block; font-size: 1.5rem; }
+      .metric span { color: #6b7280; font-size: .9rem; }
+      [data-theme="dark"] .metric span { color: #9ca3af; }
+      .schedule { border-left: 3px solid #2563eb; padding-left: 10px; margin: 12px 0; color: #4b5563; }
+      [data-theme="dark"] .schedule { color: #d1d5db; }
       .counts { display: flex; gap: 12px; margin: 14px 0; flex-wrap: wrap; }
       .count { background: #eef2ff; border-radius: 9px; padding: 9px 12px; }
       [data-theme="dark"] .count { background: #312e81; }
@@ -34,6 +42,12 @@
         <h1>群聊学习状态</h1>
         <p id="status" class="status">正在读取状态…</p>
         <p id="topics" class="meta"></p>
+        <p id="schedule" class="schedule"></p>
+        <section class="overview" aria-label="学习概览">
+          <div class="metric"><strong id="group-count">—</strong><span>有学习数据的群</span></div>
+          <div class="metric"><strong id="pending-count">—</strong><span>待筛选原话</span></div>
+          <div class="metric"><strong id="memory-count">—</strong><span>已提炼知识</span></div>
+        </section>
         <button class="refresh" id="refresh">刷新</button>
       </header>
       <section id="groups"></section>
@@ -90,6 +104,14 @@
           statusElement.textContent = data.enabled ? "学习功能已启用" : "学习功能当前已关闭";
           statusElement.className = data.enabled ? "status active" : "status";
           topicsElement.textContent = `重点主题：${(data.topics || []).join("、") || "未配置"}`;
+          const schedule = data.schedule || {};
+          const scheduleLabel = schedule.mode === "weekly"
+            ? `每周 ${((schedule.weekdays || []).join("、") || "未设置星期")} ${schedule.time || "未设置时间"}`
+            : `每天 ${schedule.time || "未设置时间"}`;
+          document.getElementById("schedule").textContent = `学习计划：${scheduleLabel}；大模型批次：${data.batch?.size || 0} 条 / ${data.batch?.max_characters || 0} 字符`;
+          document.getElementById("group-count").textContent = data.overview?.group_count ?? 0;
+          document.getElementById("pending-count").textContent = data.overview?.pending_count ?? 0;
+          document.getElementById("memory-count").textContent = data.overview?.memory_count ?? 0;
           renderGroups(data.groups || []);
         } catch (error) {
           groupsElement.replaceChildren(makeElement("p", `读取失败：${error.message}`, "error"));

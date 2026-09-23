@@ -448,6 +448,20 @@ class GroupLearning(Star):
         return {
             "enabled": bool(self.config.get("enabled", False)),
             "topics": self.config.get("listen_topics", []),
+            "schedule": {
+                "mode": self.config.get("schedule_mode", "daily"),
+                "time": self.config.get("schedule_time", "03:00"),
+                "weekdays": self.config.get("weekly_weekdays", []),
+            },
+            "batch": {
+                "size": self.config.get("batch_size", 10),
+                "max_characters": self.config.get("max_batch_characters", 3000),
+            },
+            "overview": {
+                "group_count": len(groups),
+                "pending_count": sum(group["pending_count"] for group in groups),
+                "memory_count": sum(group["memory_count"] for group in groups),
+            },
             "groups": groups,
         }
 
