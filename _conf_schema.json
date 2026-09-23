@@ -1,0 +1,12 @@
+{
+  "enabled": {"type": "bool", "default": false, "description": "启用群聊知识学习。默认关闭，只有白名单群会进入学习流程。"},
+  "allowed_group_ids": {"type": "list", "default": [], "description": "允许学习的 QQ 群号白名单；必须明确填写，空列表不会学习任何群。"},
+  "filter_provider_id": {"type": "string", "default": "", "description": "小模型：筛选代码规则未拦截的消息，只保留有长期价值的内容。", "_special": "select_provider"},
+  "learning_provider_id": {"type": "string", "default": "", "description": "大模型：将小模型通过的消息提炼为简短、可检索的群知识。", "_special": "select_provider"},
+  "min_message_length": {"type": "int", "default": 4, "description": "短于此长度的消息会被代码规则直接跳过。"},
+  "max_message_length": {"type": "int", "default": 300, "description": "长于此长度的消息会被代码规则直接跳过，避免转发和刷屏内容。"},
+  "blocked_keywords": {"type": "list", "default": ["加群", "扫码", "兼职", "推广", "代购彩票", "点击链接"], "description": "包含任一关键词的消息会在调用模型前直接丢弃。"},
+  "blocked_patterns": {"type": "list", "default": ["^\\[图片\\]$", "^\\[表情.*\\]$", "^@[A-Za-z0-9_]+$"], "description": "垃圾信息正则表达式；匹配后直接丢弃。填写无效正则不会中断机器人。"},
+  "max_memories_per_group": {"type": "int", "default": 500, "description": "每群最多保留的提炼后知识条数；超过后自动删除最早记录。"},
+  "memories_in_prompt": {"type": "int", "default": 6, "description": "机器人回答时最多取出的相关知识数；数值越大，回答成本越高。"}
+}

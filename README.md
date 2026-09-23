@@ -1,14 +1,38 @@
-# astrbot-plugin-helloworld
+# 群聊知识学习插件
 
-AstrBot 插件模板 / A template plugin for AstrBot plugin feature
+插件把群聊转成**群专属、可清除的长期知识**，而不是训练模型，也不会把整段聊天直接放进回答上下文。
 
-> [!NOTE]
-> This repo is just a template of [AstrBot](https://github.com/AstrBotDevs/AstrBot) Plugin.
-> 
-> [AstrBot](https://github.com/AstrBotDevs/AstrBot) is an agentic assistant for both personal and group conversations. It can be deployed across dozens of mainstream instant messaging platforms, including QQ, Telegram, Feishu, DingTalk, Slack, LINE, Discord, Matrix, etc. In addition, it provides a reliable and extensible conversational AI infrastructure for individuals, developers, and teams. Whether you need a personal AI companion, an intelligent customer support agent, an automation assistant, or an enterprise knowledge base, AstrBot enables you to quickly build AI applications directly within your existing messaging workflows.
+## 学习流程
 
-# Supports
+```text
+授权群消息
+  → 代码规则：命令、过短/过长文本、链接、重复字符、关键词和正则垃圾过滤
+  → 小模型：只回答 KEEP 或 DROP，判断是否有长期价值
+  → 大模型：将通过内容提炼成一条简短的事实、规则、决定或群内术语
+  → 本地 JSON 记忆库
+  → 机器人回答时，仅检索当前群最相关的少量知识
+```
 
-- [AstrBot Repo](https://github.com/AstrBotDevs/AstrBot)
-- [AstrBot Plugin Development Docs (Chinese)](https://docs.astrbot.app/dev/star/plugin-new.html)
-- [AstrBot Plugin Development Docs (English)](https://docs.astrbot.app/en/dev/star/plugin-new.html)
+这样能先用零成本规则移除大部分垃圾信息，再让便宜的小模型做二次筛选；只有通过筛选的消息才调用大模型，因此更省钱、也更不容易把闲聊当知识。
+
+## 配置
+
+AstrBot 会从 `_conf_schema.json` 自动生成后台配置。重载插件后，到 WebUI 的“插件 → 群聊学习”设置：
+
+1. 在 QQ 群发送 `/sid`，获取群 ID。
+2. 打开 `enabled`。
+3. 把群 ID 添加到 `allowed_group_ids` 白名单。空列表绝不会学习。
+4. 在 `filter_provider_id` 选择一个便宜、速度快的小模型。
+5. 在 `learning_provider_id` 选择一个更可靠的大模型；它负责把通过的消息整理为知识。
+6. 根据群情况调整关键词和正则过滤规则。
+
+两个模型都必须配置；缺少任一个时插件只记录警告，**不会**把未经提炼的原始聊天保存为知识。
+
+## 群内命令
+
+- `/群学习状态`：查看当前群已经保存的知识数量。
+- `/清空群学习`：清空当前群的知识；仅 AstrBot 管理员可执行。
+
+## 数据与隐私
+
+提炼后的知识位于 `data/plugin_data/astrbot_plugin_group_learning/group_memories.json`，每个群独立保存。原始候选消息只在模型调用中使用，不会由插件写入磁盘。被小模型或大模型选中的内容会发送到你在 AstrBot 配置的对应模型服务商；启用前应取得群成员同意。
