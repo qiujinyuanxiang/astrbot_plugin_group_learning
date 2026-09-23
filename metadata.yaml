@@ -3,4 +3,4 @@ display_name: 群聊学习 # 用于展示的名字，可以是方便人类阅读
 desc: 自动提取和记忆群聊中的重要内容，黑话与群聊知识。 # 插件简短描述
 version: v1.0.0 # 插件版本号。格式：v1.1.1 或者 v1.1
 author: qiujinyuanxiang # 作者
-repo: https://github.com/Soulter/helloworld # 插件的仓库地址
+repo: https://github.com/qiujinyuanxiang/astrbot_plugin_group_learning # 插件的仓库地址
